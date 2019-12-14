@@ -2,14 +2,16 @@
 
 
 [[projects]]
+  digest = "1:883e2fdbdd0e577187bd8106fec775b1176059af267a7f40eba5308955c67d52"
   name = "github.com/gorilla/mux"
   packages = ["."]
+  pruneopts = ""
   revision = "00bdffe0f3c77e27d2cf6f5c70232a2d3e4d9c15"
   version = "v1.7.3"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "4212248b7f50201de7dd825b9603236a5a9ea952519be13b46e30544213de809"
+  input-imports = ["github.com/gorilla/mux"]
   solver-name = "gps-cdcl"
   solver-version = 1
