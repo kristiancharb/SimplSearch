@@ -41,8 +41,10 @@ func (indexStore *IndexStore) newIndexHandler(w http.ResponseWriter, r *http.Req
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	indexStore.store[body.Name] = &search.Index{Name: body.Name}
-	fmt.Println(*indexStore)
+	indexStore.store[body.Name] = &search.Index{
+		Name:  body.Name,
+		Terms: make(map[string][]*search.Posting),
+	}
 	fmt.Fprintf(w, "Created new index named: %v", body.Name)
 }
 
@@ -56,7 +58,7 @@ func (indexStore *IndexStore) newDocumentHandler(w http.ResponseWriter, r *http.
 	indexName := mux.Vars(r)["name"]
 	indexStore.store[indexName].AddDocument(body.Contents)
 	fmt.Fprintf(w,
-		"Created new document for index %v with contents:\n%v",
+		"Created new document for index %v",
 		indexName,
-		body.Contents)
+	)
 }

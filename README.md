@@ -1,6 +1,6 @@
 # SimplSearch
 
-## A simple Go search engine Go
+## A simple Go search engine
 
 ## Approach
 ### Structs
@@ -8,14 +8,8 @@ Index:
 ```
 {
     name string
-    segments []Segment
-}
-```
-Segment:
-```
-{
     docCount int
-    documents map[int]Document
+    documents []string
     terms map[string][]Posting
 }
 ```
@@ -41,3 +35,5 @@ Offset:
 
 ### Resources
 - https://sease.io/2015/07/exploring-solr-internals-lucene.html
+- https://medium.com/@deangelaneves/how-to-build-a-search-engine-from-scratch-in-python-part-1-96eb240f9ecb
+
