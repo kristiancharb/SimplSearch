@@ -16,6 +16,10 @@ type DocumentReq struct {
 	Contents string
 }
 
+type SearchReq struct {
+	Query string
+}
+
 type IndexStore struct {
 	store map[string]*search.Index
 }
@@ -27,6 +31,7 @@ func newRouter() *mux.Router {
 	router.HandleFunc("/", handler).Methods("GET")
 	router.HandleFunc("/index", indexStore.newIndexHandler).Methods("POST")
 	router.HandleFunc("/index/{name}", indexStore.newDocumentHandler).Methods("POST")
+	router.HandleFunc("/search/{name}", indexStore.searchHandler).Methods("POST")
 	return router
 }
 
@@ -61,4 +66,15 @@ func (indexStore *IndexStore) newDocumentHandler(w http.ResponseWriter, r *http.
 		"Created new document for index %v",
 		indexName,
 	)
+}
+
+func (indexStore *IndexStore) searchHandler(w http.ResponseWriter, r *http.Request) {
+	var body SearchReq
+	err := json.NewDecoder(r.Body).Decode(&body)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	indexName := mux.Vars(r)["name"]
+	indexStore.store[indexName].Search(body.Query)
 }
