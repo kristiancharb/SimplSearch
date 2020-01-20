@@ -48,7 +48,7 @@ func (indexStore *IndexStore) newIndexHandler(w http.ResponseWriter, r *http.Req
 	}
 	indexStore.store[body.Name] = &search.Index{
 		Name:  body.Name,
-		Terms: make(map[string][]*search.Posting),
+		Terms: make(map[string]*search.TermInfo),
 	}
 	fmt.Fprintf(w, "Created new index named: %v", body.Name)
 }

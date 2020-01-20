@@ -2,66 +2,82 @@ package search
 
 import (
 	"fmt"
+	"math"
+	"regexp"
 	"strings"
-	"unicode"
 )
 
 type Index struct {
 	Name     string
 	DocCount int
 	Docs     []string
-	Terms    map[string][]*Posting
+	Terms    map[string]*TermInfo
+}
+
+type TermInfo struct {
+	Postings []*Posting
+	IDF      float64
+	numDocs  int
 }
 
 type Posting struct {
 	DocID        int
 	Frequency    int
 	Positions    []int
-	StartOffsets []int
-	EndOffsets   []int
+	NormalizedTF float64
 }
 
 func (index *Index) AddDocument(contents string) {
 	index.Docs = append(index.Docs, contents)
 	index.DocCount++
 	docID := len(index.Docs) - 1
-	index.tokenize(contents, docID)
+	terms := tokenize(contents)
+	index.add(terms, docID)
 	fmt.Println(index)
+
 }
 
-func (index *Index) tokenize(contents string, docID int) {
-	var currWord strings.Builder
+func (index *Index) add(terms []string, docID int) {
 	pos := 0
 
-	for i, currRune := range contents {
-		if unicode.IsLetter(currRune) || unicode.IsDigit(currRune) {
-			currWord.WriteRune(currRune)
-		} else if unicode.IsSpace(currRune) && currWord.Len() > 0 {
-			term := currWord.String()
-
-			var posting *Posting
-			if _, present := index.Terms[term]; !present {
-				posting = &Posting{DocID: docID}
-				index.Terms[term] = []*Posting{posting}
-			} else {
-				posting = getPostingForSameDoc(index.Terms[term], docID)
-			}
+	for _, term := range terms {
+		var posting *Posting
+		if _, present := index.Terms[term]; !present {
+			posting = &Posting{DocID: docID}
+			termInfo := &TermInfo{Postings: []*Posting{posting}, numDocs: 1}
+			index.Terms[term] = termInfo
+		} else {
+			postings := index.Terms[term].Postings
+			posting = getPostingForDoc(postings, docID)
 			if posting == nil {
 				posting = &Posting{DocID: docID}
-				index.Terms[term] = append(index.Terms[term], posting)
+				index.Terms[term].Postings = append(postings, posting)
 			}
+			index.Terms[term].numDocs++
+		}
 
-			posting.Frequency++
-			posting.Positions = append(posting.Positions, pos)
-			posting.StartOffsets = append(posting.StartOffsets, i-len(term))
-			posting.EndOffsets = append(posting.EndOffsets, i)
-			pos++
-			currWord.Reset()
+		posting.Frequency++
+		posting.NormalizedTF = float64(posting.Frequency) / float64(len(terms))
+		posting.Positions = append(posting.Positions, pos)
+		pos++
+	}
+
+	allTerms := getAllTerms(index.Terms)
+	numTerms := len(allTerms)
+	for _, term := range allTerms {
+		if termInfo, present := index.Terms[term]; present {
+			termInfo.IDF = 1.0 + math.Log(float64(numTerms)/float64(termInfo.numDocs))
 		}
 	}
 }
 
-func getPostingForSameDoc(postingList []*Posting, docID int) *Posting {
+func tokenize(contents string) []string {
+	reg := regexp.MustCompile("[^a-zA-Z0-9\\s]+")
+	contents = reg.ReplaceAllString(contents, "")
+	return strings.Fields(contents)
+}
+
+func getPostingForDoc(postingList []*Posting, docID int) *Posting {
 	for _, posting := range postingList {
 		if posting.DocID == docID {
 			return posting
@@ -70,11 +86,23 @@ func getPostingForSameDoc(postingList []*Posting, docID int) *Posting {
 	return nil
 }
 
+func getAllTerms(termsMap map[string]*TermInfo) []string {
+	terms := make([]string, len(termsMap))
+
+	i := 0
+	for term := range termsMap {
+		terms[i] = term
+		i++
+	}
+	return terms
+}
+
 func (index Index) String() string {
 	terms := ""
-	for term, postingList := range index.Terms {
-		terms += term + " => \n"
-		for _, posting := range postingList {
+	for term, termInfo := range index.Terms {
+		terms += fmt.Sprintf("%v: (%v, %v) => \n", term, termInfo.numDocs, termInfo.IDF)
+		postings := termInfo.Postings
+		for _, posting := range postings {
 			terms += fmt.Sprintf("DocID: %v\n", posting.DocID)
 			terms += fmt.Sprintf("Frequency: %v\n", posting.Frequency)
 			terms += fmt.Sprintf("Positions: %v\n", posting.Positions)
