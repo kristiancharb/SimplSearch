@@ -24,20 +24,6 @@ Posting:
 }
 ```
 
-### Example
-```
-INDEX:
-
-hello => [docId: 1, tf-idf: 1.2], [docId: 2, tf-idf: 3],
-how => [docId: 3, tf-idf: 2.1]
-are => [docId: 1, tf-idf: 2.0]
-you => [docId: 1, tf-idf: 0.1], [docId: 2, tf-idf: 3], [docId: 3, tf-idf: 2.5]
-
-QUERY:
-hello you
-
-docs: 
-```
 
 
 ### Querying
