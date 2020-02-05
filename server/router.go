@@ -76,5 +76,7 @@ func (indexStore *IndexStore) searchHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	indexName := mux.Vars(r)["name"]
-	indexStore.store[indexName].Search(body.Query)
+	queryResponse := indexStore.store[indexName].Search(body.Query)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(queryResponse)
 }
