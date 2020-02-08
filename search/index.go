@@ -7,6 +7,10 @@ import (
 	"strings"
 )
 
+type IndexStore struct {
+	store map[string]*Index
+}
+
 type Index struct {
 	Name     string
 	DocCount int
@@ -27,14 +31,24 @@ type Posting struct {
 	NormalizedTF float64
 }
 
-func (index *Index) AddDocument(contents string) {
+func NewIndexStore() *IndexStore {
+	return &IndexStore{make(map[string]*Index)}
+}
+
+func (indexStore *IndexStore) NewIndex(name string) {
+	indexStore.store[name] = &Index{
+		Name:  name,
+		Terms: make(map[string]*TermInfo),
+	}
+}
+
+func (indexStore *IndexStore) AddDocument(indexName string, contents string) {
+	index := indexStore.store[indexName]
 	index.Docs = append(index.Docs, contents)
 	index.DocCount++
 	docID := len(index.Docs) - 1
 	terms := tokenize(contents)
 	index.add(terms, docID)
-	fmt.Println(index)
-
 }
 
 func (index *Index) add(terms []string, docID int) {

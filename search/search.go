@@ -1,7 +1,7 @@
 package search
 
 import (
-	"fmt"
+	// "fmt"
 	"math"
 	"sort"
 )
@@ -22,7 +22,8 @@ type QueryResponse struct {
 	Docs   []ResponseDoc
 }
 
-func (index *Index) Search(query string) QueryResponse {
+func (indexStore *IndexStore) Search(indexName string, query string) QueryResponse {
+	index := indexStore.store[indexName]
 	terms := tokenize(query)
 	queryVector, docVectorMap := index.getVectors(terms)
 	docRankings := index.getDocRankings(queryVector, docVectorMap)
@@ -76,12 +77,9 @@ func (index *Index) getDocRankings(queryVector []float64, docVectorMap map[int][
 		docs = append(docs, docID)
 		docScores[docID] = dotProduct(queryVector, docVector) / (magnitude(queryVector) * magnitude(docVector))
 	}
-	fmt.Println("Doc Scores:")
-	fmt.Println(docScores)
 	sort.Slice(docs, func(i, j int) bool {
 		return docScores[i] > docScores[j]
 	})
-	fmt.Println(docs)
 	return docs
 }
 
