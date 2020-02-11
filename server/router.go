@@ -8,30 +8,33 @@ import (
 	"net/http"
 )
 
+type IndexWrapper struct {
+	store *search.IndexStore
+}
+
 type IndexReq struct {
 	Name string
 }
 
 type DocumentReq struct {
+	Title    string
 	Contents string
 }
 
 type SearchReq struct {
 	Query string
-}
-
-type IndexStore struct {
-	store map[string]*search.Index
+	Limit int
 }
 
 func newRouter() *mux.Router {
 	router := mux.NewRouter()
-	indexStore := IndexStore{make(map[string]*search.Index)}
+	indexStore := search.NewIndexStore()
+	index := IndexWrapper{indexStore}
 
 	router.HandleFunc("/", handler).Methods("GET")
-	router.HandleFunc("/index", indexStore.newIndexHandler).Methods("POST")
-	router.HandleFunc("/index/{name}", indexStore.newDocumentHandler).Methods("POST")
-	router.HandleFunc("/search/{name}", indexStore.searchHandler).Methods("POST")
+	router.HandleFunc("/index", index.newIndexHandler).Methods("POST")
+	router.HandleFunc("/index/{name}", index.newDocumentHandler).Methods("POST")
+	router.HandleFunc("/search/{name}", index.searchHandler).Methods("POST")
 	return router
 }
 
@@ -39,21 +42,18 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, "Welcome to SimplSearch!!!")
 }
 
-func (indexStore *IndexStore) newIndexHandler(w http.ResponseWriter, r *http.Request) {
+func (index *IndexWrapper) newIndexHandler(w http.ResponseWriter, r *http.Request) {
 	var body IndexReq
 	err := json.NewDecoder(r.Body).Decode(&body)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	indexStore.store[body.Name] = &search.Index{
-		Name:  body.Name,
-		Terms: make(map[string]*search.TermInfo),
-	}
+	index.store.NewIndex(body.Name)
 	fmt.Fprintf(w, "Created new index named: %v", body.Name)
 }
 
-func (indexStore *IndexStore) newDocumentHandler(w http.ResponseWriter, r *http.Request) {
+func (index *IndexWrapper) newDocumentHandler(w http.ResponseWriter, r *http.Request) {
 	var body DocumentReq
 	err := json.NewDecoder(r.Body).Decode(&body)
 	if err != nil {
@@ -61,14 +61,14 @@ func (indexStore *IndexStore) newDocumentHandler(w http.ResponseWriter, r *http.
 		return
 	}
 	indexName := mux.Vars(r)["name"]
-	indexStore.store[indexName].AddDocument(body.Contents)
+	index.store.AddDocument(indexName, body.Title, body.Contents, -1)
 	fmt.Fprintf(w,
 		"Created new document for index %v",
 		indexName,
 	)
 }
 
-func (indexStore *IndexStore) searchHandler(w http.ResponseWriter, r *http.Request) {
+func (index *IndexWrapper) searchHandler(w http.ResponseWriter, r *http.Request) {
 	var body SearchReq
 	err := json.NewDecoder(r.Body).Decode(&body)
 	if err != nil {
@@ -76,7 +76,7 @@ func (indexStore *IndexStore) searchHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	indexName := mux.Vars(r)["name"]
-	queryResponse := indexStore.store[indexName].Search(body.Query)
+	queryResponse := index.store.Search(indexName, body.Query, body.Limit)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(queryResponse)
 }

@@ -9,13 +9,14 @@ import (
 
 type IndexStore struct {
 	store map[string]*Index
+	db    *DBWrapper
 }
 
 type Index struct {
 	Name     string
 	DocCount int
-	Docs     []string
-	Terms    map[string]*TermInfo
+	// Docs     []string
+	Terms map[string]*TermInfo
 }
 
 type TermInfo struct {
@@ -25,14 +26,19 @@ type TermInfo struct {
 }
 
 type Posting struct {
-	DocID        int
+	DocID        int64
 	Frequency    int
 	Positions    []int
 	NormalizedTF float64
 }
 
 func NewIndexStore() *IndexStore {
-	return &IndexStore{make(map[string]*Index)}
+	store := &IndexStore{
+		store: make(map[string]*Index),
+		db:    InitDb(),
+	}
+	store.InitIndex()
+	return store
 }
 
 func (indexStore *IndexStore) NewIndex(name string) {
@@ -42,16 +48,17 @@ func (indexStore *IndexStore) NewIndex(name string) {
 	}
 }
 
-func (indexStore *IndexStore) AddDocument(indexName string, contents string) {
+func (indexStore *IndexStore) AddDocument(indexName string, title string, contents string, docID int64) {
 	index := indexStore.store[indexName]
-	index.Docs = append(index.Docs, contents)
+	if docID == -1 {
+		docID = indexStore.db.InsertDoc(indexName, title, contents)
+	}
 	index.DocCount++
-	docID := len(index.Docs) - 1
 	terms := tokenize(contents)
 	index.add(terms, docID)
 }
 
-func (index *Index) add(terms []string, docID int) {
+func (index *Index) add(terms []string, docID int64) {
 	pos := 0
 
 	for _, term := range terms {
@@ -91,7 +98,7 @@ func tokenize(contents string) []string {
 	return strings.Fields(contents)
 }
 
-func getPostingForDoc(postingList []*Posting, docID int) *Posting {
+func getPostingForDoc(postingList []*Posting, docID int64) *Posting {
 	for _, posting := range postingList {
 		if posting.DocID == docID {
 			return posting
@@ -127,9 +134,8 @@ func (index Index) String() string {
 		"++++++++++++++++++++++++++++++++++\n"+
 			"Name: %v\n"+
 			"DocCount: %v\n"+
-			"Docs: %v\n"+
 			"Terms: \n%v\n"+
 			"++++++++++++++++++++++++++++++++++\n",
-		index.Name, index.DocCount, index.Docs, terms,
+		index.Name, index.DocCount, terms,
 	)
 }

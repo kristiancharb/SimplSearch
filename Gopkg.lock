@@ -9,9 +9,20 @@
   revision = "00bdffe0f3c77e27d2cf6f5c70232a2d3e4d9c15"
   version = "v1.7.3"
 
+[[projects]]
+  digest = "1:9b474e650675e8a1bf204a4b0710d3e6dccb70fce150f802792d454e8b4fc8d9"
+  name = "github.com/mattn/go-sqlite3"
+  packages = ["."]
+  pruneopts = ""
+  revision = "9bdaffc12bf8be15afceb51bb60851edd4afdff5"
+  version = "v2.0.3"
+
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  input-imports = ["github.com/gorilla/mux"]
+  input-imports = [
+    "github.com/gorilla/mux",
+    "github.com/mattn/go-sqlite3",
+  ]
   solver-name = "gps-cdcl"
   solver-version = 1

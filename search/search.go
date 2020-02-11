@@ -1,7 +1,7 @@
 package search
 
 import (
-	// "fmt"
+	"fmt"
 	"math"
 	"sort"
 )
@@ -12,33 +12,28 @@ type queryTerm struct {
 	tfidf        float64
 }
 
-type ResponseDoc struct {
-	Id       int
-	Contents string
-}
-
 type QueryResponse struct {
 	Length int
-	Docs   []ResponseDoc
+	Docs   []Doc
 }
 
-func (indexStore *IndexStore) Search(indexName string, query string) QueryResponse {
+func (indexStore *IndexStore) Search(indexName string, query string, limit int) QueryResponse {
 	index := indexStore.store[indexName]
 	terms := tokenize(query)
 	queryVector, docVectorMap := index.getVectors(terms)
-	docRankings := index.getDocRankings(queryVector, docVectorMap)
-	response := QueryResponse{}
-	for _, docID := range docRankings {
-		response.Docs = append(response.Docs, ResponseDoc{
-			Id:       docID,
-			Contents: index.Docs[docID],
-		})
+	docs := indexStore.getDocsRanked(indexName, queryVector, docVectorMap)
+	if limit > 0 {
+		docs = docs[:limit]
+	}
+	response := QueryResponse{
+		Length: len(docs),
+		Docs:   docs,
 	}
 	response.Length = len(response.Docs)
 	return response
 }
 
-func (index *Index) getVectors(terms []string) ([]float64, map[int][]float64) {
+func (index *Index) getVectors(terms []string) ([]float64, map[int64][]float64) {
 	queryTermFrequencies := make(map[string]int)
 
 	for _, term := range terms {
@@ -50,7 +45,7 @@ func (index *Index) getVectors(terms []string) ([]float64, map[int][]float64) {
 
 	numUniqueTerms := len(queryTermFrequencies)
 	queryVector := make([]float64, numUniqueTerms)
-	docVectorMap := make(map[int][]float64)
+	docVectorMap := make(map[int64][]float64)
 	termIndex := 0
 	for term := range queryTermFrequencies {
 		if indexTermInfo, present := index.Terms[term]; present {
@@ -70,16 +65,19 @@ func (index *Index) getVectors(terms []string) ([]float64, map[int][]float64) {
 	return queryVector, docVectorMap
 }
 
-func (index *Index) getDocRankings(queryVector []float64, docVectorMap map[int][]float64) []int {
-	var docs []int
-	docScores := make(map[int]float64)
+func (indexStore *IndexStore) getDocsRanked(indexName string, queryVector []float64, docVectorMap map[int64][]float64) []Doc {
+	var docIDs []int64
+	docScores := make(map[int64]float64)
 	for docID, docVector := range docVectorMap {
-		docs = append(docs, docID)
+		docIDs = append(docIDs, docID)
 		docScores[docID] = dotProduct(queryVector, docVector) / (magnitude(queryVector) * magnitude(docVector))
 	}
+	docs := indexStore.db.getDocs(docIDs)
 	sort.Slice(docs, func(i, j int) bool {
-		return docScores[i] > docScores[j]
+		return docScores[docs[i].Id] > docScores[docs[j].Id]
 	})
+	fmt.Println(docs)
+	fmt.Println(docScores)
 	return docs
 }
 
