@@ -1,3 +1,4 @@
+.DS_Store
 # Binaries for programs and plugins
 *.exe
 *.exe~
@@ -16,5 +17,6 @@ vendor/
 
 # Database 
 docs.db
+sample-data/articles*
 
 .vscode
