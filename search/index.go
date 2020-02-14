@@ -20,7 +20,7 @@ type Index struct {
 }
 
 type TermInfo struct {
-	Postings []*Posting
+	Postings map[int64]*Posting
 	IDF      float64
 	numDocs  int
 }
@@ -58,6 +58,18 @@ func (indexStore *IndexStore) AddDocument(indexName string, title string, conten
 	index.add(terms, docID)
 }
 
+func (indexStore *IndexStore) UpdateIndex(indexName string) {
+	index := indexStore.store[indexName]
+	allTerms := getAllTerms(index.Terms)
+	numTerms := len(allTerms)
+
+	for _, term := range allTerms {
+		if termInfo, present := index.Terms[term]; present {
+			termInfo.IDF = 1.0 + math.Log(float64(numTerms)/float64(termInfo.numDocs))
+		}
+	}
+}
+
 func (index *Index) add(terms []string, docID int64) {
 	pos := 0
 
@@ -65,14 +77,17 @@ func (index *Index) add(terms []string, docID int64) {
 		var posting *Posting
 		if _, present := index.Terms[term]; !present {
 			posting = &Posting{DocID: docID}
-			termInfo := &TermInfo{Postings: []*Posting{posting}, numDocs: 1}
+			termInfo := &TermInfo{
+				Postings: make(map[int64]*Posting),
+				numDocs:  1,
+			}
+			termInfo.Postings[docID] = posting
 			index.Terms[term] = termInfo
 		} else {
 			postings := index.Terms[term].Postings
-			posting = getPostingForDoc(postings, docID)
-			if posting == nil {
+			if posting, present = postings[docID]; !present {
 				posting = &Posting{DocID: docID}
-				index.Terms[term].Postings = append(postings, posting)
+				postings[docID] = posting
 			}
 			index.Terms[term].numDocs++
 		}
@@ -81,14 +96,6 @@ func (index *Index) add(terms []string, docID int64) {
 		posting.NormalizedTF = float64(posting.Frequency) / float64(len(terms))
 		posting.Positions = append(posting.Positions, pos)
 		pos++
-	}
-
-	allTerms := getAllTerms(index.Terms)
-	numTerms := len(allTerms)
-	for _, term := range allTerms {
-		if termInfo, present := index.Terms[term]; present {
-			termInfo.IDF = 1.0 + math.Log(float64(numTerms)/float64(termInfo.numDocs))
-		}
 	}
 }
 

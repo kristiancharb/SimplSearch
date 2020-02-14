@@ -62,6 +62,7 @@ func (index *IndexWrapper) newDocumentHandler(w http.ResponseWriter, r *http.Req
 	}
 	indexName := mux.Vars(r)["name"]
 	index.store.AddDocument(indexName, body.Title, body.Contents, -1)
+	index.store.UpdateIndex(indexName)
 	fmt.Fprintf(w,
 		"Created new document for index %v",
 		indexName,

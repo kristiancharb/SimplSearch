@@ -1,7 +1,7 @@
 package search
 
 import (
-	"fmt"
+	// "fmt"
 	"math"
 	"sort"
 )
@@ -22,7 +22,7 @@ func (indexStore *IndexStore) Search(indexName string, query string, limit int) 
 	terms := tokenize(query)
 	queryVector, docVectorMap := index.getVectors(terms)
 	docs := indexStore.getDocsRanked(indexName, queryVector, docVectorMap)
-	if limit > 0 {
+	if limit > 0 && limit < len(docs) {
 		docs = docs[:limit]
 	}
 	response := QueryResponse{
@@ -52,12 +52,12 @@ func (index *Index) getVectors(terms []string) ([]float64, map[int64][]float64) 
 			normalizedTF := float64(queryTermFrequencies[term]) / float64(numUniqueTerms)
 			queryVector[termIndex] = indexTermInfo.IDF * normalizedTF
 
-			for _, posting := range indexTermInfo.Postings {
-				if _, present := docVectorMap[posting.DocID]; !present {
-					docVectorMap[posting.DocID] = make([]float64, numUniqueTerms)
+			for docId, posting := range indexTermInfo.Postings {
+				if _, present := docVectorMap[docId]; !present {
+					docVectorMap[docId] = make([]float64, numUniqueTerms)
 				}
 				tfidf := posting.NormalizedTF * indexTermInfo.IDF
-				docVectorMap[posting.DocID][termIndex] = tfidf
+				docVectorMap[docId][termIndex] = tfidf
 			}
 		}
 		termIndex++
@@ -76,8 +76,6 @@ func (indexStore *IndexStore) getDocsRanked(indexName string, queryVector []floa
 	sort.Slice(docs, func(i, j int) bool {
 		return docScores[docs[i].Id] > docScores[docs[j].Id]
 	})
-	fmt.Println(docs)
-	fmt.Println(docScores)
 	return docs
 }
 

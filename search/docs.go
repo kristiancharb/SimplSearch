@@ -36,11 +36,23 @@ func InitDb() *DBWrapper {
 
 func (indexStore *IndexStore) InitIndex() {
 	docs := indexStore.db.getAllDocs()
+	uniqueIndexes := make(map[string]int)
+	i := 0
 	for _, doc := range docs {
 		if _, present := indexStore.store[doc.Index]; !present {
 			indexStore.NewIndex(doc.Index)
 		}
 		indexStore.AddDocument(doc.Index, doc.Title, doc.Contents, doc.Id)
+		uniqueIndexes[doc.Index] = 1
+
+		if i%50 == 0 {
+			fmt.Printf("%v documents indexed\n", i)
+		}
+		i++
+	}
+
+	for index := range uniqueIndexes {
+		indexStore.UpdateIndex(index)
 	}
 }
 
@@ -71,6 +83,9 @@ func (wrapper *DBWrapper) getDocs(docIDs []int64) []Doc {
 	args := make([]interface{}, len(docIDs))
 	for i, id := range docIDs {
 		args[i] = id
+	}
+	if len(args) < 1 {
+		return docs
 	}
 	stmt := `SELECT id, index_name, title, contents FROM docs WHERE id IN (?` + strings.Repeat(",?", len(args)-1) + `)`
 	rows, err := wrapper.db.Query(stmt, args...)
