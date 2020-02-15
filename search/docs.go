@@ -80,23 +80,15 @@ func (wrapper *DBWrapper) getAllDocs() []*Doc {
 
 func (wrapper *DBWrapper) getDocs(docIDs []int64) []Doc {
 	var docs []Doc
-	args := make([]interface{}, len(docIDs))
-	for i, id := range docIDs {
-		args[i] = id
-	}
-	if len(args) < 1 {
-		return docs
-	}
-	stmt := `SELECT id, index_name, title, contents FROM docs WHERE id IN (?` + strings.Repeat(",?", len(args)-1) + `)`
-	rows, err := wrapper.db.Query(stmt, args...)
-	if err != nil {
-		fmt.Println(err)
-		return nil
-	}
-
-	for rows.Next() {
+	for _, id := range docIDs {
 		var doc Doc
-		rows.Scan(&doc.Id, &doc.Index, &doc.Title, &doc.Contents)
+		stmt := "SELECT id, index_name, title, contents FROM docs WHERE id=$1"
+		row := wrapper.db.QueryRow(stmt, id)
+		err := row.Scan(&doc.Id, &doc.Index, &doc.Title, &doc.Contents)
+		if err != nil {
+			fmt.Println(err)
+			return nil
+		}
 		docs = append(docs, doc)
 	}
 	return docs
