@@ -102,6 +102,7 @@ func (index *Index) add(terms []string, docID int64) {
 func tokenize(contents string) []string {
 	reg := regexp.MustCompile("[^a-zA-Z0-9\\s]+")
 	contents = reg.ReplaceAllString(contents, "")
+	contents = strings.ToLower(contents)
 	return strings.Fields(contents)
 }
 

@@ -5,7 +5,8 @@ import sqlite3
 
 csv.field_size_limit(sys.maxsize)
 
-conn = sqlite3.connect('/Users/kristiancharbonneau/go/src/github.com/kristiancharb/SimplSearch/docs.db')
+project_path = '/Users/kristiancharbonneau/go/src/github.com/kristiancharb/SimplSearch'
+conn = sqlite3.connect(f'{project_path}/docs.db')
 
 create_table = 'CREATE TABLE IF NOT EXISTS docs (id INTEGER PRIMARY KEY, index_name VARCHAR(255), title TEXT, contents TEXT);'
 cursor = conn.cursor()
@@ -13,8 +14,8 @@ cursor.execute(create_table)
 
 docs = []
 j = 0
-for i in range(1, 4):
-    with open(f'articles{i}.csv', newline='') as csvfile:
+for i in range(1, 2):
+    with open(f'{project_path}/sample-data/articles{i}.csv', newline='') as csvfile:
         reader = csv.reader(csvfile, delimiter=',')
         for row in reader:
             if (len(row) < 10): 
