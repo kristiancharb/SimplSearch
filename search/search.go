@@ -75,7 +75,12 @@ func (indexStore *IndexStore) getDocsRanked(
 		docScores[docID] = dotProduct(queryVector, docVector) / (magnitude(queryVector) * magnitude(docVector))
 	}
 	sort.Slice(docIDs, func(i, j int) bool {
-		return docScores[docIDs[i]] > docScores[docIDs[j]]
+		iScore := docScores[docIDs[i]]
+		jScore := docScores[docIDs[j]]
+		if iScore != jScore {
+			return iScore > jScore
+		}
+		return docIDs[i] > docIDs[j]
 	})
 	if limit > 0 && limit < len(docIDs) {
 		docIDs = docIDs[:limit]
