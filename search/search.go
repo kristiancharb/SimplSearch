@@ -1,7 +1,6 @@
 package search
 
 import (
-	// "fmt"
 	"math"
 	"sort"
 )
@@ -17,11 +16,11 @@ type QueryResponse struct {
 	Docs   []Doc
 }
 
-func (indexStore *IndexStore) Search(indexName string, query string, limit int) QueryResponse {
+func (indexStore *IndexStore) Search(indexName string, query string, start int, end int) QueryResponse {
 	index := indexStore.store[indexName]
 	terms := tokenize(query)
 	queryVector, docVectorMap := index.getVectors(terms)
-	docs := indexStore.getDocsRanked(indexName, queryVector, docVectorMap, limit)
+	docs := indexStore.getDocsRanked(indexName, queryVector, docVectorMap, start, end)
 	response := QueryResponse{
 		Length: len(docs),
 		Docs:   docs,
@@ -66,7 +65,8 @@ func (indexStore *IndexStore) getDocsRanked(
 	indexName string,
 	queryVector []float64,
 	docVectorMap map[int64][]float64,
-	limit int,
+	start int,
+	end int,
 ) []Doc {
 	var docIDs []int64
 	docScores := make(map[int64]float64)
@@ -74,7 +74,7 @@ func (indexStore *IndexStore) getDocsRanked(
 		docIDs = append(docIDs, docID)
 		docScores[docID] = dotProduct(queryVector, docVector) / (magnitude(queryVector) * magnitude(docVector))
 	}
-	sort.Slice(docIDs, func(i, j int) bool {
+	sort.SliceStable(docIDs, func(i, j int) bool {
 		iScore := docScores[docIDs[i]]
 		jScore := docScores[docIDs[j]]
 		if iScore != jScore {
@@ -82,9 +82,14 @@ func (indexStore *IndexStore) getDocsRanked(
 		}
 		return docIDs[i] > docIDs[j]
 	})
-	if limit > 0 && limit < len(docIDs) {
-		docIDs = docIDs[:limit]
+	if start >= len(docIDs) {
+		start = len(docIDs) - 1
 	}
+	if end >= len(docIDs) {
+		end = len(docIDs) - 1
+	}
+	docIDs = docIDs[start:end]
+
 	docs := indexStore.db.getDocs(docIDs)
 	return docs
 }

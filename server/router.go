@@ -23,7 +23,8 @@ type DocumentReq struct {
 
 type SearchReq struct {
 	Query string
-	Limit int
+	Start int
+	End   int
 }
 
 func newRouter() *mux.Router {
@@ -76,8 +77,12 @@ func (index *IndexWrapper) searchHandler(w http.ResponseWriter, r *http.Request)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	if body.Start < 0 || body.End < 0 || body.Start > body.End {
+		http.Error(w, "Invalid range", http.StatusBadRequest)
+		return
+	}
 	indexName := mux.Vars(r)["name"]
-	queryResponse := index.store.Search(indexName, body.Query, body.Limit)
+	queryResponse := index.store.Search(indexName, body.Query, body.Start, body.End)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(queryResponse)
 }
