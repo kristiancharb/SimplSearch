@@ -27,6 +27,7 @@ type SearchReq struct {
 	End   int
 }
 
+// Initialize search engine and route handlers
 func newRouter() *mux.Router {
 	router := mux.NewRouter()
 	indexStore := search.NewIndexStore()

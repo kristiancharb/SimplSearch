@@ -7,31 +7,34 @@ import (
 	"strings"
 )
 
+// IndexStore contains index map and DB reference
 type IndexStore struct {
 	store map[string]*Index
 	db    *DBWrapper
 }
 
+// Index is an individual inverted index
 type Index struct {
 	Name     string
 	DocCount int
-	// Docs     []string
-	Terms map[string]*TermInfo
+	Terms    map[string]*TermInfo
 }
 
+// TermInfo is info for each term in index
 type TermInfo struct {
 	Postings map[int64]*Posting
 	IDF      float64
 	numDocs  int
 }
 
+// Posting is an individual occurence of a term in a particular doc
 type Posting struct {
 	DocID        int64
 	Frequency    int
-	Positions    []int
 	NormalizedTF float64
 }
 
+// NewIndexStore initializes the search engine
 func NewIndexStore() *IndexStore {
 	store := &IndexStore{
 		store: make(map[string]*Index),
@@ -41,6 +44,7 @@ func NewIndexStore() *IndexStore {
 	return store
 }
 
+// NewIndex adds a new index to a store
 func (indexStore *IndexStore) NewIndex(name string) {
 	indexStore.store[name] = &Index{
 		Name:  name,
@@ -48,6 +52,7 @@ func (indexStore *IndexStore) NewIndex(name string) {
 	}
 }
 
+// AddDocument adds a new document to a particular index
 func (indexStore *IndexStore) AddDocument(indexName string, title string, contents string, docID int64) {
 	index := indexStore.store[indexName]
 	if docID == -1 {
@@ -58,6 +63,8 @@ func (indexStore *IndexStore) AddDocument(indexName string, title string, conten
 	index.add(terms, docID)
 }
 
+// UpdateIndex calculates IDF for each term
+// This should be called once per transaction
 func (indexStore *IndexStore) UpdateIndex(indexName string) {
 	index := indexStore.store[indexName]
 	allTerms := getAllTerms(index.Terms)
@@ -71,11 +78,11 @@ func (indexStore *IndexStore) UpdateIndex(indexName string) {
 }
 
 func (index *Index) add(terms []string, docID int64) {
-	pos := 0
-
 	for _, term := range terms {
 		var posting *Posting
 		if _, present := index.Terms[term]; !present {
+			// Term isn't present in index
+			// Create new term entry in map and insert new posting
 			posting = &Posting{DocID: docID}
 			termInfo := &TermInfo{
 				Postings: make(map[int64]*Posting),
@@ -84,6 +91,8 @@ func (index *Index) add(terms []string, docID int64) {
 			termInfo.Postings[docID] = posting
 			index.Terms[term] = termInfo
 		} else {
+			// Term exists in index
+			// Create new posting
 			postings := index.Terms[term].Postings
 			if posting, present = postings[docID]; !present {
 				posting = &Posting{DocID: docID}
@@ -91,14 +100,12 @@ func (index *Index) add(terms []string, docID int64) {
 			}
 			index.Terms[term].numDocs++
 		}
-
 		posting.Frequency++
 		posting.NormalizedTF = float64(posting.Frequency) / float64(len(terms))
-		posting.Positions = append(posting.Positions, pos)
-		pos++
 	}
 }
 
+// Remove punctuation, make lowercase, and split individual words into slice
 func tokenize(contents string) []string {
 	reg := regexp.MustCompile("[^a-zA-Z0-9\\s]+")
 	contents = reg.ReplaceAllString(contents, "")
@@ -106,18 +113,8 @@ func tokenize(contents string) []string {
 	return strings.Fields(contents)
 }
 
-func getPostingForDoc(postingList []*Posting, docID int64) *Posting {
-	for _, posting := range postingList {
-		if posting.DocID == docID {
-			return posting
-		}
-	}
-	return nil
-}
-
 func getAllTerms(termsMap map[string]*TermInfo) []string {
 	terms := make([]string, len(termsMap))
-
 	i := 0
 	for term := range termsMap {
 		terms[i] = term
@@ -134,7 +131,6 @@ func (index Index) String() string {
 		for _, posting := range postings {
 			terms += fmt.Sprintf("DocID: %v\n", posting.DocID)
 			terms += fmt.Sprintf("Frequency: %v\n", posting.Frequency)
-			terms += fmt.Sprintf("Positions: %v\n", posting.Positions)
 		}
 		terms += "\n"
 	}

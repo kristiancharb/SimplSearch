@@ -5,17 +5,13 @@ import (
 	"sort"
 )
 
-type queryTerm struct {
-	frequency    int
-	normalizedTF float64
-	tfidf        float64
-}
-
+// QueryResponse is the query response sent to the client
 type QueryResponse struct {
 	Length int
 	Docs   []Doc
 }
 
+// Search queries the given index and returns a QueryResponse for the client
 func (indexStore *IndexStore) Search(indexName string, query string, start int, end int) QueryResponse {
 	index := indexStore.store[indexName]
 	terms := tokenize(query)
@@ -29,25 +25,23 @@ func (indexStore *IndexStore) Search(indexName string, query string, start int, 
 	return response
 }
 
+// Returns the query vector and a map of docId: vector
+// Vectors are arrays of TFIDF values for each term in the document
 func (index *Index) getVectors(terms []string) ([]float64, map[int64][]float64) {
-	queryTermFrequencies := make(map[string]int)
-
-	for _, term := range terms {
-		if _, present := queryTermFrequencies[term]; !present {
-			queryTermFrequencies[term] = 0
-		}
-		queryTermFrequencies[term]++
-	}
-
+	queryTermFrequencies := getQueryTermFrequencies(terms)
 	numUniqueTerms := len(queryTermFrequencies)
 	queryVector := make([]float64, numUniqueTerms)
 	docVectorMap := make(map[int64][]float64)
 	termIndex := 0
+
 	for term := range queryTermFrequencies {
 		if indexTermInfo, present := index.Terms[term]; present {
+			// Calculate query TFIDF value for current term
 			normalizedTF := float64(queryTermFrequencies[term]) / float64(numUniqueTerms)
 			queryVector[termIndex] = indexTermInfo.IDF * normalizedTF
 
+			// For each posting, get TFIDF value for current term
+			// Insert value into correspond vector from doc vector map
 			for docId, posting := range indexTermInfo.Postings {
 				if _, present := docVectorMap[docId]; !present {
 					docVectorMap[docId] = make([]float64, numUniqueTerms)
@@ -61,6 +55,18 @@ func (index *Index) getVectors(terms []string) ([]float64, map[int64][]float64) 
 	return queryVector, docVectorMap
 }
 
+func getQueryTermFrequencies(terms []string) map[string]int {
+	queryTermFrequencies := make(map[string]int)
+	for _, term := range terms {
+		if _, present := queryTermFrequencies[term]; !present {
+			queryTermFrequencies[term] = 0
+		}
+		queryTermFrequencies[term]++
+	}
+	return queryTermFrequencies
+}
+
+// Rank docs by score and return requested range of docs
 func (indexStore *IndexStore) getDocsRanked(
 	indexName string,
 	queryVector []float64,
@@ -72,8 +78,10 @@ func (indexStore *IndexStore) getDocsRanked(
 	docScores := make(map[int64]float64)
 	for docID, docVector := range docVectorMap {
 		docIDs = append(docIDs, docID)
+		// Doc score for a doc is the cosine similarity between query and doc vectors
 		docScores[docID] = dotProduct(queryVector, docVector) / (magnitude(queryVector) * magnitude(docVector))
 	}
+	// Use stable sort for consistent search results
 	sort.SliceStable(docIDs, func(i, j int) bool {
 		iScore := docScores[docIDs[i]]
 		jScore := docScores[docIDs[j]]

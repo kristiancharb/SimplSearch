@@ -3,15 +3,17 @@ package search
 import (
 	"database/sql"
 	"fmt"
-	_ "github.com/mattn/go-sqlite3"
+	_ "github.com/mattn/go-sqlite3" // sqlite3 driver
 	"log"
 	"strings"
 )
 
+// DBWrapper wraps the db struct so we can use it for methods
 type DBWrapper struct {
 	db *sql.DB
 }
 
+// Doc represents the DB schema for the docs table
 type Doc struct {
 	Id       int64
 	Index    string
@@ -19,6 +21,7 @@ type Doc struct {
 	Contents string
 }
 
+// InitDb creates a new DB instance and the docs table
 func InitDb() *DBWrapper {
 	db, err := sql.Open("sqlite3", "./docs.db")
 	if err != nil {
@@ -34,6 +37,7 @@ func InitDb() *DBWrapper {
 	return &DBWrapper{db}
 }
 
+// InitIndex reads all docs from DB and creates their inverted indexes
 func (indexStore *IndexStore) InitIndex() {
 	docs := indexStore.db.getAllDocs()
 	uniqueIndexes := make(map[string]int)
@@ -56,6 +60,7 @@ func (indexStore *IndexStore) InitIndex() {
 	}
 }
 
+// InsertDoc inserts a document into the DB
 func (wrapper *DBWrapper) InsertDoc(index string, title string, contents string) int64 {
 	statement, _ := wrapper.db.Prepare("INSERT INTO docs (index_name, title, contents) VALUES (?, ?, ?)")
 	result, _ := statement.Exec(index, title, contents)
@@ -97,11 +102,3 @@ func (wrapper *DBWrapper) getDocs(docIDs []int64) []Doc {
 func sliceToString(slice []int64) string {
 	return strings.Trim(strings.Replace(fmt.Sprint(slice), " ", ", ", -1), "[]")
 }
-
-// func Test() {
-// 	wrapper := InitDb()
-// 	wrapper.InsertDoc("test", "cool title", "i love java")
-// 	wrapper.InsertDoc("test", "cooler title", "sql is good with java")
-// 	docs := wrapper.getAllDocs()
-// 	fmt.Println(*docs[3])
-// }
