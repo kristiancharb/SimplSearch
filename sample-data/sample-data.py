@@ -14,6 +14,8 @@ cursor.execute(create_table)
 
 docs = []
 j = 0
+insert_docs = "INSERT INTO docs (index_name, title, contents) VALUES (?, ?, ?)"
+
 for i in range(1, 2):
     with open(f'{project_path}/sample-data/articles{i}.csv', newline='') as csvfile:
         reader = csv.reader(csvfile, delimiter=',')
@@ -25,12 +27,11 @@ for i in range(1, 2):
             docs.append(('test', title, contents))
             if j % 10 == 0:
                 print(j, 'documents processed')
+            if j % 1000 == 0:
+                cursor.executemany(insert_docs, docs)
+                docs = []
             j += 1
 
-insert_docs = "INSERT INTO docs (index_name, title, contents) VALUES (?, ?, ?)"
-
-cursor.executemany(insert_docs, docs)
-print(cursor.rowcount, 'rows inserted')
 conn.commit()
 
 conn.close()
