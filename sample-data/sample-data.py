@@ -5,7 +5,7 @@ import sqlite3
 
 csv.field_size_limit(sys.maxsize)
 
-project_path = '/Users/kristiancharbonneau/go/src/github.com/kristiancharb/SimplSearch'
+project_path = f'{sys.argv[1]}/go/src/github.com/kristiancharb/SimplSearch'
 conn = sqlite3.connect(f'{project_path}/docs.db')
 
 create_table = 'CREATE TABLE IF NOT EXISTS docs (id INTEGER PRIMARY KEY, index_name VARCHAR(255), title TEXT, contents TEXT);'
