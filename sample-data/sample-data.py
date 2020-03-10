@@ -13,24 +13,28 @@ cursor = conn.cursor()
 cursor.execute(create_table)
 
 docs = []
-j = 0
+curr_title = ''
+curr_contents = ''
 insert_docs = "INSERT INTO docs (index_name, title, contents) VALUES (?, ?, ?)"
+j = 0
 
-for i in range(1, 2):
-    with open(f'{project_path}/sample-data/articles{i}.csv', newline='') as csvfile:
-        reader = csv.reader(csvfile, delimiter=',')
-        for row in reader:
-            if (len(row) < 10): 
-                continue
-            title = row[2].replace('"', '')
-            contents = row[9].replace('"', '')
-            docs.append(('test', title, contents))
-            if j % 10 == 0:
-                print(j, 'documents processed')
-            if j % 1000 == 0:
-                cursor.executemany(insert_docs, docs)
-                docs = []
-            j += 1
+with open(f'{project_path}/sample-data/simple-wiki.txt', newline='') as f:
+    for line in f:
+        if line == '\n':
+            docs.append(('test', curr_title.strip(), curr_contents.strip()))
+            curr_title = ''
+            curr_contents = ''
+        elif curr_title == '':
+            curr_title = line
+        else:
+            curr_contents += line
+
+        if j % 10 == 0:
+            print(j, 'documents processed')
+        if j % 1000 == 0:
+            cursor.executemany(insert_docs, docs)
+            docs = []
+        j += 1
 
 conn.commit()
 
