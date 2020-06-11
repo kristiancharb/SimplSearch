@@ -7,8 +7,9 @@ import (
 
 // QueryResponse is the query response sent to the client
 type QueryResponse struct {
-	Length int
-	Docs   []Doc
+	Length     int
+	NumResults int
+	Docs       []Doc
 }
 
 // Search queries the given index and returns a QueryResponse for the client
@@ -16,10 +17,21 @@ func (indexStore *IndexStore) Search(indexName string, query string, start int, 
 	index := indexStore.store[indexName]
 	terms := tokenize(query)
 	queryVector, docVectorMap := index.getVectors(terms)
-	docs := indexStore.getDocsRanked(indexName, queryVector, docVectorMap, start, end)
+	docIDs := indexStore.getDocsRanked(indexName, queryVector, docVectorMap)
+
+	docs := []Doc{}
+	numResults := 0
+	if len(docIDs) > 0 && start <= len(docIDs)-1 {
+		end = min(end, len(docIDs))
+		numResults = len(docIDs)
+		docIDs = docIDs[start:end]
+		docs = indexStore.db.getDocs(docIDs)
+	}
+
 	response := QueryResponse{
-		Length: len(docs),
-		Docs:   docs,
+		Length:     len(docs),
+		NumResults: numResults,
+		Docs:       docs,
 	}
 	response.Length = len(response.Docs)
 	return response
@@ -42,12 +54,12 @@ func (index *Index) getVectors(terms []string) ([]float64, map[int64][]float64) 
 
 			// For each posting, get TFIDF value for current term
 			// Insert value into correspond vector from doc vector map
-			for docId, posting := range indexTermInfo.Postings {
-				if _, present := docVectorMap[docId]; !present {
-					docVectorMap[docId] = make([]float64, numUniqueTerms)
+			for docID, posting := range indexTermInfo.Postings {
+				if _, present := docVectorMap[docID]; !present {
+					docVectorMap[docID] = make([]float64, numUniqueTerms)
 				}
 				tfidf := posting.NormalizedTF * indexTermInfo.IDF
-				docVectorMap[docId][termIndex] = tfidf
+				docVectorMap[docID][termIndex] = tfidf
 			}
 		}
 		termIndex++
@@ -71,9 +83,7 @@ func (indexStore *IndexStore) getDocsRanked(
 	indexName string,
 	queryVector []float64,
 	docVectorMap map[int64][]float64,
-	start int,
-	end int,
-) []Doc {
+) []int64 {
 	var docIDs []int64
 	docScores := make(map[int64]float64)
 	for docID, docVector := range docVectorMap {
@@ -90,16 +100,7 @@ func (indexStore *IndexStore) getDocsRanked(
 		}
 		return docIDs[i] > docIDs[j]
 	})
-	if start >= len(docIDs) {
-		start = len(docIDs) - 1
-	}
-	if end >= len(docIDs) {
-		end = len(docIDs) - 1
-	}
-	docIDs = docIDs[start:end]
-
-	docs := indexStore.db.getDocs(docIDs)
-	return docs
+	return docIDs
 }
 
 func dotProduct(x []float64, y []float64) float64 {
@@ -121,4 +122,11 @@ func magnitude(x []float64) float64 {
 		sum += x[i] * x[i]
 	}
 	return math.Sqrt(sum)
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
