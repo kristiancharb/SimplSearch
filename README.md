@@ -2,41 +2,27 @@
 
 ## A simple Go search engine
 
-## Approach
-### Structs
-Index: 
-```
-{
-    name string
-    docCount int
-    documents []string
-    terms map[string][]Posting
-}
-```
-Posting:
-```
-{
-    docId int
-    frequency int
-    positions []int
-    startOffsets []int
-    endOffsets []int
-}
-```
+SimplSearch is a full text search server built with Go and SQLite. 
 
+SQLite is used only for document storage, the search and indexing logic was built completely from scratch. 
 
+### Indexing
 
-### Querying
-- Split up query string into individual search terms omitting whitespace and punctuation
-- For each search term, get posting list
-- Iterate over query terms 
-    - Build query vector (slice) by looking up IDF for current term in index
-    - Build map of doc vectors
-        - Iterate through postings
-        - If doc for current posting isn't in map, insert 
-        - Calculate tfidf and insert it into doc vector for current doc at the term index
-    - Build slice of unique doc IDs for docs included in results
-- Sort doc IDs slice by cosine similarity between doc and query vector 
+When a new document is added, it's split up into individual tokens. These tokens are just the individual words in the document converted to lowercase with all punctuation removed. The tokens are then inserted into the inverted index.
+
+The inverted index maps individual search terms to the following info:
+- Posting map: A posting represents an individual occurence of a term in a document. This data structure maps document IDs to the frequency of the term in the particular document and the normalized term frequency (TF: `term frequency ÷ number of terms in document`).
+- Inverse Document Frequency (IDF): `1 + log(total number of terms in index ÷ number of docs containing term)`
+- Number of documents
+
+### Searching
+
+When an index is queried, the query is also split up into individual tokens. Then each token is used as a key into the inverted index. All the posting maps for each token are merged to create one master list of document IDs. This list is then sorted based on document rank. These documents are then fetched from the database and returned to the client. 
+
+### Ranking 
+
+Documents are ranked based on how "similar" they are to the query. To measure similarity, first a term vector is constructed for each document and for the query. The term vector is an array containing the TF-IDF values for each term in the document/query. A high TF-IDF value shows that a term shows up often in a document but doesn't show up often in other documents. The final measure of similarity is the cosine similarity between a particular document vector and the query vector. 
+
 
 ### Resources
 - https://sease.io/2015/07/exploring-solr-internals-lucene.html
