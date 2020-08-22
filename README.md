@@ -9,6 +9,7 @@ SQLite is used only for document storage, the search and indexing logic was buil
 ### API
 
 - Create a new index
+
   POST: /index
   ```
   {
@@ -17,6 +18,7 @@ SQLite is used only for document storage, the search and indexing logic was buil
   ```
   
 - Add document to index
+
   POST: /index/<name>
   ```
   {
@@ -25,6 +27,7 @@ SQLite is used only for document storage, the search and indexing logic was buil
   }
   ```
 - Search an index
+  
   POST: /index/<name?
   ```
   {
