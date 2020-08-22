@@ -6,6 +6,8 @@ SimplSearch is a full text search server built with Go and SQLite.
 
 SQLite is used only for document storage, the search and indexing logic was built completely from scratch. 
 
+[See it in action](https://search.kristiancharb.com/)
+
 ### API
 
 - Create a new index
